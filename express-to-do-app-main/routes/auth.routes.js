@@ -1,8 +1,14 @@
 const express = require("express")
 const { body, validationResult } = require("express-validator")
 const router = express.Router()
+const fs = require("fs/promises")
+var bcrypt = require('bcryptjs')
 
-const USER = []
+const USER = [{
+    name: 'sunny',
+    email: 'sunnyyadav9820@gmail.com',
+    hash: '$2a$10$yOUNJRfngpeOi3GE24QQ..KW3tttnB1Qptsl160uRYVZygG0IcKu.'
+}]
 
 router.post("/register",
 // custom validator 
@@ -44,15 +50,24 @@ body("password").custom((password)=>{
             data: {}
          })
     }
+    var salt = bcrypt.genSaltSync(10);
+    var hash = bcrypt.hashSync(password, salt);
 
     USER.push(
         {
             name,
             email,
-            password
+            hash
         }
     )
 
+    fs.writeFile("users.json", JSON.stringify(USER), (err) => {
+        if(err){
+            console.log(err);
+
+            throw err;
+        }
+    })
     // 201 for resource creation
     return res.status(201).json({
         message: "Success ! User registered",
@@ -63,8 +78,11 @@ body("password").custom((password)=>{
 
 router.post("/login", (req, res) => {
     const { email, password }= req.body
-
+    console.log({'user array': USER})
     console.log("---post body---", email, password);
+    const userInd = USER.findIndex((user) => user.email === email)
+    const ok = bcrypt.compareSync(password, USER[userInd].password)
+    console.log('result', ok);
 
     if(USER.length <= 0){
         return res.status(404).json({
@@ -88,6 +106,7 @@ router.post("/login", (req, res) => {
         })
     }
     if(USER[userIndex].password != password){
+    // if(bcrypt.compareSync(password, USER[userIndex].password)){
         return res.status(404).json({
             message: "User login failed.",
             error: "Password does not match",
@@ -97,14 +116,14 @@ router.post("/login", (req, res) => {
 
     // create access token
     // use jwt token 
-    const token = JWT.sign( {email}, SECRET )
+    // const token = JWT.sign( {email}, SECRET )
 
     // 200 for successfull check
     return res.status(200).json({
         message: "Success ! User logged in",
-        data: {
-            access_token: token
-        },
+        // data: {
+        //     access_token: token
+        // },
         errors: null
     })
 })
